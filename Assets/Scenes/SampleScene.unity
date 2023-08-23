@@ -334,6 +334,7 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
+  - component: {fileID: 963194229}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -415,6 +416,29 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &963194229
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2052a6bcad404ec459cd0839e23010bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 1065571689}
+  offset: {x: 0, y: 7.5, z: 0}
+  distance: 10
+  maxDistance: 500
+  xSpeed: 250
+  ySpeed: 120
+  yMinLimit: 0
+  yMaxLimit: 89
+  x: 0
+  y: 0
+  disableControls: 0
 --- !u!1 &1065571689
 GameObject:
   m_ObjectHideFlags: 0
@@ -459,14 +483,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ddc4b093c3d47c246999a63edbf154d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gameCamera: {fileID: 963194227}
   resetButton: 0
-  treeDepth: 6
-  treeNAryMin: 2
-  treeNAryMax: 8
+  randSeed: 0
+  seed: 2568
+  treeDepth: 5
+  treeNAryMin: 4
+  treeNAryMax: 4
   rootLength: 5
+  lengthFactor: 0.6
+  directionInfluenceFactor: 1
+  maxBranchRenderDepth: 99
+  trunkSize: 1
+  leafSizeFactor: 5
+  doDynamicLOD: 1
+  desiredPixelSize: 4
   branchPrefab: {fileID: 3379056177332425554, guid: b3eaa9e415282004fa9539c1d8588f99, type: 3}
   leafPrefab: {fileID: 6760609915409480831, guid: 6908ea7269ac6d74a9931ce21d71243f, type: 3}
-  branchMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  leafMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  branchMaterial: {fileID: 2100000, guid: 44ed52672a2cf494ea9439a08ef37888, type: 2}
-  leafMaterial: {fileID: 2100000, guid: 13f81aa132816334282ae8405780c61b, type: 2}

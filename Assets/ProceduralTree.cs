@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 using Unity.Mathematics;
 
 [ExecuteInEditMode]
@@ -8,17 +9,31 @@ public class ProceduralTree : MonoBehaviour
 {
 	// Variables
 	public static ProceduralTree Instance;
+	public Camera gameCamera;
 	public bool resetButton = false;
+	public bool randSeed = false;
+	public int seed = 123;
 	public int treeDepth = 4;
 	public int treeNAryMin = 2;
 	public int treeNAryMax = 4;
 	public float rootLength = 10.0f;
+	public float lengthFactor = 0.66f;
+	public float directionInfluenceFactor = 1.0f;
+	public int maxBranchRenderDepth = 5;
+	public float trunkSize = 1.0f;
+	public float leafSizeFactor = 4.0f;
+	public bool doDynamicLOD = false;
+	public float desiredPixelSize = 4.0f;
 	public GameObject branchPrefab;
 	public GameObject leafPrefab;
 	private TreeNode root;
+	private Camera currentCamera;
+	private float tanFOV;
 
 
 
+
+	// Unity Callbacks
 	void Awake()
 	{
 		Instance = this;
@@ -26,6 +41,16 @@ public class ProceduralTree : MonoBehaviour
 
 	void OnEnable()
 	{
+		if (Application.isPlaying == false && SceneView.GetAllSceneCameras().Length > 0)
+		{
+			currentCamera = SceneView.GetAllSceneCameras()[0];
+			tanFOV = 2.0f * Mathf.Tan(currentCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+		}
+		else
+		{
+			currentCamera = gameCamera;
+			tanFOV = 2.0f * Mathf.Tan(currentCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+		}
 		InitTree();
 	}
 
@@ -37,6 +62,17 @@ public class ProceduralTree : MonoBehaviour
 
 	void Update()
 	{
+		if (Application.isPlaying == false && SceneView.GetAllSceneCameras().Length > 0)
+		{
+			currentCamera = SceneView.GetAllSceneCameras()[0];
+			tanFOV = 2.0f * Mathf.Tan(currentCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+		}
+		else
+		{
+			currentCamera = gameCamera;
+			tanFOV = 2.0f * Mathf.Tan(currentCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+		}
+
 		if (resetButton == true)
 		{
 			resetButton = false;
@@ -44,20 +80,36 @@ public class ProceduralTree : MonoBehaviour
 				DestroyImmediate(root.nodeObject);
 			InitTree();
 		}
+		if (doDynamicLOD == true)
+		{
+			TreeDynamicLOD();
+		}
 	} 
 
 
 
+
+	// Tree Handling
 	public void InitTree()
 	{
 		if (Instance == null)
 			Instance = this;
 
-		root = new TreeNode(0, null, Vector3.up, rootLength);
+		if (randSeed == true)
+		{
+			UnityEngine.Random.InitState(System.DateTime.Now.Millisecond);
+			seed = (int)(UnityEngine.Random.value * 10000.0f);
+		}
+
+		root = new TreeNode(0, seed, null, Vector3.up, rootLength);
 		root.UpdateNodeObject();
 		root.nodeObject.transform.parent = this.transform;
-		for (int i = 0; i < treeDepth; i++)
-			SubdivideWholeTreeOnce();
+		if (doDynamicLOD == false)
+			for (int i = 0; i < treeDepth; i++)
+				SubdivideWholeTreeOnce();
+
+		if (currentCamera.GetComponent<OrbitCamera>() != null)
+			currentCamera.GetComponent<OrbitCamera>().offset = new Vector3(0, rootLength * 1.5f, 0);
 	}
 
 	public List<TreeNode> FindLeafNodes()
@@ -100,11 +152,16 @@ public class ProceduralTree : MonoBehaviour
 
 	public void SubdivideNode(TreeNode node)
 	{
+		UnityEngine.Random.InitState(node.seed);
 		node.children = new List<TreeNode>();
 		int randN = treeNAryMin + (int)(UnityEngine.Random.value * treeNAryMax);
 		for (int i = 0; i < randN; i++)
 		{
-			TreeNode child = new TreeNode(node.depth + 1, node, Vector3.Normalize(node.direction * 1.0f + UnityEngine.Random.onUnitSphere), node.length / 1.75f);
+			Vector3 newDirection = Vector3.Normalize(node.direction * directionInfluenceFactor + UnityEngine.Random.onUnitSphere);
+			if (i == 0 && UnityEngine.Random.value > 0.5f)
+				newDirection = node.direction;
+			int newSeed = (int)(UnityEngine.Random.value * int.MaxValue);
+			TreeNode child = new TreeNode(node.depth + 1, newSeed, node, newDirection, node.length * lengthFactor);
 			node.children.Add(child);
 			child.UpdateNodeObject();
 		}
@@ -121,6 +178,32 @@ public class ProceduralTree : MonoBehaviour
 		node.UpdateNodeObject();
 	}
 
+	public void TreeDynamicLOD()
+	{
+		List<TreeNode> leafNodes = FindLeafNodes();
+		for (int i = 0; i < leafNodes.Count; i++)
+		{
+			if (leafNodes[i] == null || leafNodes[i].nodeObject == null || leafNodes[i].leafRenderer == null)
+				continue;
+
+			float pixelSize = ComputeNodePixelSize(leafNodes[i]);
+			if (pixelSize > desiredPixelSize && leafNodes[i].depth < treeDepth)
+				SubdivideNode(leafNodes[i]);
+
+			if (leafNodes[i].parent != null)
+			{
+				float parentPixelSize = ComputeNodePixelSize(leafNodes[i].parent);
+				if (parentPixelSize < desiredPixelSize)
+					MergeNode(leafNodes[i].parent);
+			}
+		}
+	}
+
+	public float ComputeNodePixelSize(TreeNode node)
+	{
+		float pixelSize = (node.leafRenderer.transform.localScale.x * currentCamera.pixelHeight) / (Vector3.Distance(currentCamera.transform.position, node.leafRenderer.transform.position) * tanFOV);
+		return pixelSize;
+	}
 
 
 
@@ -128,6 +211,7 @@ public class ProceduralTree : MonoBehaviour
 	public class TreeNode
 	{
 		public int depth;
+		public int seed;
 		public TreeNode parent;
 		public List<TreeNode> children;
 
@@ -137,9 +221,10 @@ public class ProceduralTree : MonoBehaviour
 		public GameObject branchRenderer;
 		public GameObject leafRenderer;
 
-		public TreeNode(int d, TreeNode p, Vector3 dir, float l)
+		public TreeNode(int d, int s, TreeNode p, Vector3 dir, float l)
 		{
 			depth = d;
+			seed = s;
 			parent = p;
 			direction = dir;
 			length = l;
@@ -179,6 +264,9 @@ public class ProceduralTree : MonoBehaviour
 				leafRenderer.SetActive(false);
 			}
 
+			if (depth > ProceduralTree.Instance.maxBranchRenderDepth)
+				branchRenderer.SetActive(false);
+
 			UpdateNodeObjectTransform();
 		}
 
@@ -190,12 +278,17 @@ public class ProceduralTree : MonoBehaviour
 				nodeObject.transform.position = ProceduralTree.Instance.transform.position;
 			nodeObject.transform.LookAt(nodeObject.transform.position + direction);
 
-			leafRenderer.transform.position += direction * length;
-			leafRenderer.transform.localScale = Vector3.one * 4.0f / math.pow(2.0f, depth);
+			leafRenderer.transform.position = nodeObject.transform.position + direction * length;
+			leafRenderer.transform.localScale = Vector3.one * ProceduralTree.Instance.leafSizeFactor / math.pow(2.0f, depth);
 
 			branchRenderer.transform.localRotation = Quaternion.Euler(90, 0, 0);
-			branchRenderer.transform.localScale = new Vector3(1.0f / math.pow(2.0f, depth), length, 1.0f / math.pow(2.0f, depth));
+			branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
 			branchRenderer.transform.position = nodeObject.transform.position + direction * length / 2.0f;
+			if (depth == ProceduralTree.Instance.maxBranchRenderDepth && ProceduralTree.Instance.maxBranchRenderDepth < ProceduralTree.Instance.treeDepth)
+			{
+				branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length * 1.5f, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
+				branchRenderer.transform.position = nodeObject.transform.position + direction * length * 0.75f;
+			}
 		}
 	}
 }
