@@ -10,6 +10,8 @@ public class ProceduralTree : MonoBehaviour
 	public static ProceduralTree Instance;
 	public bool resetButton = false;
 	public int treeDepth = 4;
+	public int treeNAryMin = 2;
+	public int treeNAryMax = 4;
 	public float rootLength = 10.0f;
 	public GameObject treeNodePrefab;
 	public Mesh branchMesh;
@@ -56,6 +58,7 @@ public class ProceduralTree : MonoBehaviour
 
 		root = new TreeNode(0, null, Vector3.up, rootLength);
 		root.UpdateNodeObject();
+		root.nodeObject.transform.parent = this.transform;
 		for (int i = 0; i < treeDepth; i++)
 			SubdivideWholeTreeOnce();
 	}
@@ -72,12 +75,12 @@ public class ProceduralTree : MonoBehaviour
 
 	public void FindLeafNodesRecursive(ref List<TreeNode> leaves, TreeNode current)
 	{
-		if (current.leftChild == null && current.rightChild == null)
+		if (current.children.Count == 0)
 			leaves.Add(current);
 		else
 		{
-			FindLeafNodesRecursive(ref leaves, current.leftChild);
-			FindLeafNodesRecursive(ref leaves, current.rightChild);
+			for (int i = 0; i < current.children.Count; i++)
+				FindLeafNodesRecursive(ref leaves, current.children[i]);
 		}
 	}
 
@@ -100,21 +103,24 @@ public class ProceduralTree : MonoBehaviour
 
 	public void SubdivideNode(TreeNode node)
 	{
-		TreeNode left = new TreeNode(node.depth + 1, node, Vector3.Normalize(node.direction * 1.0f + UnityEngine.Random.onUnitSphere), node.length / 2.0f);
-		node.leftChild = left;
-		left.UpdateNodeObject();
-		TreeNode right = new TreeNode(node.depth + 1, node, Vector3.Normalize(node.direction * 1.0f + UnityEngine.Random.onUnitSphere), node.length / 2.0f);
-		node.rightChild = right;
-		right.UpdateNodeObject();
+		node.children = new List<TreeNode>();
+		int randN = treeNAryMin + (int)(UnityEngine.Random.value * treeNAryMax);
+		for (int i = 0; i < randN; i++)
+		{
+			TreeNode child = new TreeNode(node.depth + 1, node, Vector3.Normalize(node.direction * 1.0f + UnityEngine.Random.onUnitSphere), node.length / 1.75f);
+			node.children.Add(child);
+			child.UpdateNodeObject();
+		}
 		node.UpdateNodeObject();
 	}
 
 	public void MergeNode(TreeNode node)
 	{
-		DestroyImmediate(node.leftChild.nodeObject);
-		node.leftChild = null;
-		DestroyImmediate(node.rightChild.nodeObject);
-		node.rightChild = null;
+		for (int i = 0; i < node.children.Count; i++)
+		{
+			DestroyImmediate(node.children[i].nodeObject);
+		}
+		node.children = new List<TreeNode>();
 		node.UpdateNodeObject();
 	}
 
@@ -126,22 +132,20 @@ public class ProceduralTree : MonoBehaviour
 	{
 		public int depth;
 		public TreeNode parent;
-		public TreeNode leftChild;
-		public TreeNode rightChild;
+		public List<TreeNode> children;
 
 		public float length;
 		public Vector3 direction;
 		public GameObject nodeObject;
 		public GameObject nodeRenderer;
 
-		public TreeNode(int d, TreeNode p, Vector3 dir, float l = 0.0f, TreeNode lC = null, TreeNode rC = null)
+		public TreeNode(int d, TreeNode p, Vector3 dir, float l)
 		{
 			depth = d;
 			parent = p;
 			direction = dir;
-			leftChild = lC;
-			rightChild = rC;
 			length = l;
+			children = new List<TreeNode>();
 		}
 
 		public void UpdateNodeObject()
@@ -155,9 +159,11 @@ public class ProceduralTree : MonoBehaviour
 				nodeRenderer = Instantiate(ProceduralTree.Instance.treeNodePrefab);
 				nodeRenderer.transform.parent = nodeObject.transform;
 			}
+			nodeObject.isStatic = true;
+			nodeRenderer.isStatic = true;
 
 			// Is Leaf
-			if (leftChild == null && rightChild == null)
+			if (children.Count == 0)
 			{
 				nodeRenderer.GetComponent<MeshFilter>().sharedMesh = ProceduralTree.Instance.leafMesh;
 				nodeRenderer.GetComponent<MeshRenderer>().sharedMaterial = ProceduralTree.Instance.leafMaterial;
@@ -180,9 +186,9 @@ public class ProceduralTree : MonoBehaviour
 			nodeObject.transform.LookAt(nodeObject.transform.position + direction);
 			
 			// Is Leaf
-			if (leftChild == null && rightChild == null)
+			if (children.Count == 0)
 			{
-				nodeRenderer.transform.localScale = Vector3.one * 100.0f / math.pow(2.0f, depth);
+				nodeRenderer.transform.localScale = Vector3.one * 10.0f / math.pow(2.0f, depth);
 			}
 			else // Is Branch
 			{
