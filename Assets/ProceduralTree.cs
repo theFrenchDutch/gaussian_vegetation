@@ -13,11 +13,8 @@ public class ProceduralTree : MonoBehaviour
 	public int treeNAryMin = 2;
 	public int treeNAryMax = 4;
 	public float rootLength = 10.0f;
-	public GameObject treeNodePrefab;
-	public Mesh branchMesh;
-	public Mesh leafMesh;
-	public Material branchMaterial;
-	public Material leafMaterial;
+	public GameObject branchPrefab;
+	public GameObject leafPrefab;
 	private TreeNode root;
 
 
@@ -137,7 +134,8 @@ public class ProceduralTree : MonoBehaviour
 		public float length;
 		public Vector3 direction;
 		public GameObject nodeObject;
-		public GameObject nodeRenderer;
+		public GameObject branchRenderer;
+		public GameObject leafRenderer;
 
 		public TreeNode(int d, TreeNode p, Vector3 dir, float l)
 		{
@@ -154,24 +152,31 @@ public class ProceduralTree : MonoBehaviour
 				nodeObject = new GameObject("TreeNode");
 			if (parent != null)
 				nodeObject.transform.parent = parent.nodeObject.transform;
-			if (nodeRenderer == null)
-			{
-				nodeRenderer = Instantiate(ProceduralTree.Instance.treeNodePrefab);
-				nodeRenderer.transform.parent = nodeObject.transform;
-			}
 			nodeObject.isStatic = true;
-			nodeRenderer.isStatic = true;
+			nodeObject.hideFlags = HideFlags.DontSaveInEditor;
+			if (branchRenderer == null)
+			{
+				branchRenderer = Instantiate(ProceduralTree.Instance.branchPrefab);
+				branchRenderer.transform.parent = nodeObject.transform;
+				branchRenderer.isStatic = true;
+				branchRenderer.hideFlags = HideFlags.DontSaveInEditor;
+			}
+			if (leafRenderer == null)
+			{
+				leafRenderer = Instantiate(ProceduralTree.Instance.leafPrefab);
+				leafRenderer.transform.parent = nodeObject.transform;
+				leafRenderer.isStatic = true;
+				leafRenderer.hideFlags = HideFlags.DontSaveInEditor;
+			}
 
 			// Is Leaf
 			if (children.Count == 0)
 			{
-				nodeRenderer.GetComponent<MeshFilter>().sharedMesh = ProceduralTree.Instance.leafMesh;
-				nodeRenderer.GetComponent<MeshRenderer>().sharedMaterial = ProceduralTree.Instance.leafMaterial;
+				leafRenderer.SetActive(true);
 			}
 			else // Is Branch
 			{
-				nodeRenderer.GetComponent<MeshFilter>().sharedMesh = ProceduralTree.Instance.branchMesh;
-				nodeRenderer.GetComponent<MeshRenderer>().sharedMaterial = ProceduralTree.Instance.branchMaterial;
+				leafRenderer.SetActive(false);
 			}
 
 			UpdateNodeObjectTransform();
@@ -184,18 +189,13 @@ public class ProceduralTree : MonoBehaviour
 			else
 				nodeObject.transform.position = ProceduralTree.Instance.transform.position;
 			nodeObject.transform.LookAt(nodeObject.transform.position + direction);
-			
-			// Is Leaf
-			if (children.Count == 0)
-			{
-				nodeRenderer.transform.localScale = Vector3.one * 10.0f / math.pow(2.0f, depth);
-			}
-			else // Is Branch
-			{
-				nodeRenderer.transform.localRotation = Quaternion.Euler(90, 0, 0);
-				nodeRenderer.transform.localScale = new Vector3(1.0f / math.pow(2.0f, depth), length / 2.0f, 1.0f / math.pow(2.0f, depth));
-				nodeRenderer.transform.position += direction * length / 2.0f;
-			}
+
+			leafRenderer.transform.position += direction * length;
+			leafRenderer.transform.localScale = Vector3.one * 4.0f / math.pow(2.0f, depth);
+
+			branchRenderer.transform.localRotation = Quaternion.Euler(90, 0, 0);
+			branchRenderer.transform.localScale = new Vector3(1.0f / math.pow(2.0f, depth), length, 1.0f / math.pow(2.0f, depth));
+			branchRenderer.transform.position = nodeObject.transform.position + direction * length / 2.0f;
 		}
 	}
 }
