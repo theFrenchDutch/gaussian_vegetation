@@ -24,6 +24,9 @@ public class ProceduralTree : MonoBehaviour
 	public float leafSizeFactor = 4.0f;
 	public bool doDynamicLOD = false;
 	public float desiredPixelSize = 4.0f;
+	public bool doDynamicWind = false;
+	public float baseWindPower = 3.0f;
+	public float windDepthFactor = 1.0f; 
 	public GameObject branchPrefab;
 	public GameObject leafPrefab;
 	private TreeNode root;
@@ -83,6 +86,10 @@ public class ProceduralTree : MonoBehaviour
 		if (doDynamicLOD == true)
 		{
 			TreeDynamicLOD();
+		}
+		if (doDynamicWind == true)
+		{
+			ProceduralWindWholeTreeRecursive(root);
 		}
 	} 
 
@@ -205,6 +212,53 @@ public class ProceduralTree : MonoBehaviour
 		return pixelSize;
 	}
 
+	float hash11(float p)
+	{
+		p = math.frac(p * 0.1031f);
+		p *= p + 19.19f;
+		p *= p + p;
+		return math.frac(p);
+	}
+
+	public void ProceduralWindWholeTreeRecursive(TreeNode current)
+	{
+		Vector3 tipPosition = current.nodeObject.transform.position + current.direction * current.length;
+		float prob = hash11(9375.264f * current.seed);
+		float prob2 = hash11(1212.958f * current.seed);
+		float prob3 = hash11(4985.163f * current.seed);
+		float angleWind = baseWindPower
+			* (math.sin(Time.realtimeSinceStartup * 2.78f * (1.0f + current.depth) * prob))
+			* (1.0f + current.depth * windDepthFactor)
+			* math.cos(Time.realtimeSinceStartup * 0.46f + tipPosition.x)
+			* math.sin(Time.realtimeSinceStartup * 0.52f + tipPosition.y)
+			* math.sin(Time.realtimeSinceStartup * 0.75f + tipPosition.z)
+			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
+		float angleWind2 = baseWindPower
+			* (math.cos(Time.realtimeSinceStartup * 2.35f * (1.0f + current.depth) * prob2))
+			* (1.0f + current.depth * windDepthFactor)
+			* math.sin(Time.realtimeSinceStartup * 0.56f + tipPosition.x)
+			* math.cos(Time.realtimeSinceStartup * 0.34f + tipPosition.y + 0.5f)
+			* math.cos(Time.realtimeSinceStartup * 0.89f + tipPosition.z)
+			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
+		float angleWind3 = baseWindPower
+			* (math.cos(Time.realtimeSinceStartup * 1.65f * (1.0f + current.depth) * prob3))
+			* (1.0f + current.depth * windDepthFactor)
+			* math.cos(Time.realtimeSinceStartup * 0.36f + tipPosition.x)
+			* math.sin(Time.realtimeSinceStartup * 0.25f + tipPosition.y)
+			* math.sin(Time.realtimeSinceStartup * 0.45f + tipPosition.z)
+			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
+		Vector3 baseEuler = current.baseLocalRotation.eulerAngles;
+		baseEuler.x += angleWind;
+		baseEuler.y += angleWind2;
+		baseEuler.z += angleWind3;
+		current.nodeObject.transform.localRotation = Quaternion.Euler(baseEuler);
+
+		if (current.children.Count > 0)
+		{
+			for (int i = 0; i < current.children.Count; i++)
+				ProceduralWindWholeTreeRecursive(current.children[i]);
+		}
+	}
 
 
 	// Structures
@@ -220,6 +274,7 @@ public class ProceduralTree : MonoBehaviour
 		public GameObject nodeObject;
 		public GameObject branchRenderer;
 		public GameObject leafRenderer;
+		public Quaternion baseLocalRotation;
 
 		public TreeNode(int d, int s, TreeNode p, Vector3 dir, float l)
 		{
@@ -277,6 +332,7 @@ public class ProceduralTree : MonoBehaviour
 			else
 				nodeObject.transform.position = ProceduralTree.Instance.transform.position;
 			nodeObject.transform.LookAt(nodeObject.transform.position + direction);
+			baseLocalRotation = nodeObject.transform.localRotation;
 
 			leafRenderer.transform.position = nodeObject.transform.position + direction * length;
 			leafRenderer.transform.localScale = Vector3.one * ProceduralTree.Instance.leafSizeFactor / math.pow(2.0f, depth);
