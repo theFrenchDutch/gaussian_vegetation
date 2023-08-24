@@ -18,6 +18,7 @@ public class ProceduralTree : MonoBehaviour
 	public int treeNAryMax = 4;
 	public float rootLength = 10.0f;
 	public float lengthFactor = 0.66f;
+	public float lengthRandFactor = 0.5f;
 	public float directionInfluenceFactor = 1.0f;
 	public int maxBranchRenderDepth = 5;
 	public float trunkSize = 1.0f;
@@ -29,6 +30,7 @@ public class ProceduralTree : MonoBehaviour
 	public float windDepthFactor = 1.0f; 
 	public GameObject branchPrefab;
 	public GameObject leafPrefab;
+	public int leafNodeCount = 0;
 	private TreeNode root;
 	private Camera currentCamera;
 	private float tanFOV;
@@ -161,14 +163,15 @@ public class ProceduralTree : MonoBehaviour
 	{
 		UnityEngine.Random.InitState(node.seed);
 		node.children = new List<TreeNode>();
-		int randN = treeNAryMin + (int)(UnityEngine.Random.value * treeNAryMax);
+		int randN = treeNAryMin + (int)(UnityEngine.Random.value * (treeNAryMax - treeNAryMin));
 		for (int i = 0; i < randN; i++)
 		{
 			Vector3 newDirection = Vector3.Normalize(node.direction * directionInfluenceFactor + UnityEngine.Random.onUnitSphere);
 			if (i == 0 && UnityEngine.Random.value > 0.5f)
 				newDirection = node.direction;
 			int newSeed = (int)(UnityEngine.Random.value * int.MaxValue);
-			TreeNode child = new TreeNode(node.depth + 1, newSeed, node, newDirection, node.length * lengthFactor);
+			float newLength = node.length * lengthFactor * (1.0f + ((UnityEngine.Random.value * 2.0f - 1.0f) * lengthRandFactor));
+			TreeNode child = new TreeNode(node.depth + 1, newSeed, node, newDirection, newLength);
 			node.children.Add(child);
 			child.UpdateNodeObject();
 		}
@@ -188,6 +191,7 @@ public class ProceduralTree : MonoBehaviour
 	public void TreeDynamicLOD()
 	{
 		List<TreeNode> leafNodes = FindLeafNodes();
+		leafNodeCount = leafNodes.Count;
 		for (int i = 0; i < leafNodes.Count; i++)
 		{
 			if (leafNodes[i] == null || leafNodes[i].nodeObject == null || leafNodes[i].leafRenderer == null)
@@ -208,6 +212,9 @@ public class ProceduralTree : MonoBehaviour
 
 	public float ComputeNodePixelSize(TreeNode node)
 	{
+		float3 boundsSize = node.leafRenderer.GetComponent<MeshRenderer>().bounds.size;
+		float worldSize = (boundsSize.x + boundsSize.y + boundsSize.z) / 3.0f;
+		//float pixelSize = (worldSize * currentCamera.pixelHeight) / (Vector3.Distance(currentCamera.transform.position, node.leafRenderer.transform.position) * tanFOV); 
 		float pixelSize = (node.leafRenderer.transform.localScale.x * currentCamera.pixelHeight) / (Vector3.Distance(currentCamera.transform.position, node.leafRenderer.transform.position) * tanFOV);
 		return pixelSize;
 	}
@@ -227,27 +234,30 @@ public class ProceduralTree : MonoBehaviour
 		float prob2 = hash11(1212.958f * current.seed);
 		float prob3 = hash11(4985.163f * current.seed);
 		float angleWind = baseWindPower
-			* (math.sin(Time.realtimeSinceStartup * 2.78f * (1.0f + current.depth) * prob))
+			* (math.sin(Time.timeSinceLevelLoad * 2.78f * (1.0f + current.depth) * prob))
 			* (1.0f + current.depth * windDepthFactor)
-			* math.cos(Time.realtimeSinceStartup * 0.46f + tipPosition.x)
-			* math.sin(Time.realtimeSinceStartup * 0.52f + tipPosition.y)
-			* math.sin(Time.realtimeSinceStartup * 0.75f + tipPosition.z)
+			* math.cos(Time.timeSinceLevelLoad * 0.46f + tipPosition.x)
+			* math.sin(Time.timeSinceLevelLoad * 0.52f + tipPosition.y)
+			* math.sin(Time.timeSinceLevelLoad * 0.75f + tipPosition.z)
 			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
 		float angleWind2 = baseWindPower
-			* (math.cos(Time.realtimeSinceStartup * 2.35f * (1.0f + current.depth) * prob2))
+			* (math.cos(Time.timeSinceLevelLoad * 2.35f * (1.0f + current.depth) * prob2))
 			* (1.0f + current.depth * windDepthFactor)
-			* math.sin(Time.realtimeSinceStartup * 0.56f + tipPosition.x)
-			* math.cos(Time.realtimeSinceStartup * 0.34f + tipPosition.y + 0.5f)
-			* math.cos(Time.realtimeSinceStartup * 0.89f + tipPosition.z)
+			* math.sin(Time.timeSinceLevelLoad * 0.56f + tipPosition.x)
+			* math.cos(Time.timeSinceLevelLoad * 0.34f + tipPosition.y + 0.5f)
+			* math.cos(Time.timeSinceLevelLoad * 0.89f + tipPosition.z)
 			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
+		float leafMul = current.children.Count == 0 ? 10.0f : 1.0f;
 		float angleWind3 = baseWindPower
-			* (math.cos(Time.realtimeSinceStartup * 1.65f * (1.0f + current.depth) * prob3))
+			* (math.cos(Time.timeSinceLevelLoad * 1.65f * leafMul * (1.0f + current.depth) * prob3))
 			* (1.0f + current.depth * windDepthFactor)
-			* math.cos(Time.realtimeSinceStartup * 0.36f + tipPosition.x)
-			* math.sin(Time.realtimeSinceStartup * 0.25f + tipPosition.y)
-			* math.sin(Time.realtimeSinceStartup * 0.45f + tipPosition.z)
+			* math.cos(Time.timeSinceLevelLoad * 0.36f * leafMul + tipPosition.x)
+			* math.sin(Time.timeSinceLevelLoad * 0.25f * leafMul + tipPosition.y)
+			* math.sin(Time.timeSinceLevelLoad * 0.45f * leafMul + tipPosition.z)
 			* math.pow(tipPosition.y, 1.0f) / (rootLength * 1.0f);
-		Vector3 baseEuler = current.baseLocalRotation.eulerAngles;
+		if (current.children.Count == 0)
+			angleWind3 *= 3.0f;
+		Vector3 baseEuler = current.noWindLocalRot.eulerAngles;
 		baseEuler.x += angleWind;
 		baseEuler.y += angleWind2;
 		baseEuler.z += angleWind3;
@@ -274,7 +284,7 @@ public class ProceduralTree : MonoBehaviour
 		public GameObject nodeObject;
 		public GameObject branchRenderer;
 		public GameObject leafRenderer;
-		public Quaternion baseLocalRotation;
+		public Quaternion noWindLocalRot;
 
 		public TreeNode(int d, int s, TreeNode p, Vector3 dir, float l)
 		{
@@ -328,23 +338,23 @@ public class ProceduralTree : MonoBehaviour
 		public void UpdateNodeObjectTransform()
 		{
 			if (parent != null)
-				nodeObject.transform.position = parent.nodeObject.transform.position + parent.length * parent.direction;
+				nodeObject.transform.position = parent.nodeObject.transform.position + parent.length * parent.nodeObject.transform.forward;
 			else
 				nodeObject.transform.position = ProceduralTree.Instance.transform.position;
 			nodeObject.transform.LookAt(nodeObject.transform.position + direction);
-			baseLocalRotation = nodeObject.transform.localRotation;
+			noWindLocalRot = nodeObject.transform.localRotation;
 
 			leafRenderer.transform.position = nodeObject.transform.position + direction * length;
 			leafRenderer.transform.localScale = Vector3.one * ProceduralTree.Instance.leafSizeFactor / math.pow(2.0f, depth);
 
 			branchRenderer.transform.localRotation = Quaternion.Euler(90, 0, 0);
-			branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
+			branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length / 2.0f, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
 			branchRenderer.transform.position = nodeObject.transform.position + direction * length / 2.0f;
-			if (depth == ProceduralTree.Instance.maxBranchRenderDepth && ProceduralTree.Instance.maxBranchRenderDepth < ProceduralTree.Instance.treeDepth)
+			/*if (depth == ProceduralTree.Instance.maxBranchRenderDepth && ProceduralTree.Instance.maxBranchRenderDepth < ProceduralTree.Instance.treeDepth)
 			{
-				branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length * 1.5f, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
+				branchRenderer.transform.localScale = new Vector3(ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth), length / 2.0f * 1.5f, ProceduralTree.Instance.trunkSize / math.pow(2.0f, depth));
 				branchRenderer.transform.position = nodeObject.transform.position + direction * length * 0.75f;
-			}
+			}*/
 		}
 	}
 }

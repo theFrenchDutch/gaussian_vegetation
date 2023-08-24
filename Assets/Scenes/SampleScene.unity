@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 0}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0, g: 0, b: 0, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -158,7 +158,7 @@ Light:
   m_InnerSpotAngle: 21.80208
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 2
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -317,7 +317,7 @@ Transform:
   m_GameObject: {fileID: 753537065}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 3, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -360,7 +360,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0.24528301, g: 0.24528301, b: 0.24528301, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -409,7 +409,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 5, z: -11.83}
+  m_LocalPosition: {x: 0, y: 5, z: -26.94}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -430,7 +430,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   target: {fileID: 1065571689}
   offset: {x: 0, y: 7.5, z: 0}
-  distance: 10
+  distance: 50
   maxDistance: 500
   xSpeed: 250
   ySpeed: 120
@@ -486,20 +486,22 @@ MonoBehaviour:
   gameCamera: {fileID: 963194227}
   resetButton: 0
   randSeed: 0
-  seed: 2568
-  treeDepth: 4
+  seed: 4681
+  treeDepth: 8
   treeNAryMin: 4
-  treeNAryMax: 4
+  treeNAryMax: 6
   rootLength: 5
   lengthFactor: 0.6
+  lengthRandFactor: 0.25
   directionInfluenceFactor: 1
   maxBranchRenderDepth: 99
   trunkSize: 1
-  leafSizeFactor: 5
+  leafSizeFactor: 15
   doDynamicLOD: 1
   desiredPixelSize: 4
-  doDynamicWind: 1
+  doDynamicWind: 0
   baseWindPower: 2
   windDepthFactor: 1
   branchPrefab: {fileID: 3379056177332425554, guid: b3eaa9e415282004fa9539c1d8588f99, type: 3}
   leafPrefab: {fileID: 6760609915409480831, guid: 6908ea7269ac6d74a9931ce21d71243f, type: 3}
+  leafNodeCount: 31575
